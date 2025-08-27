@@ -15,9 +15,9 @@ import { ThemeKey } from "@/lib/themes";
 
 import { Button } from "@/components/ui/button";
 import imageCompression from "browser-image-compression";
-import BroomDustLoader from "../FeatherDusterLoader";
+// import BroomDustLoader from "../FeatherDusterLoader";
 
-// import CardSpinner from "../CardSpinner";
+import CardSpinner from "../CardSpinner";
 import { SITE_KEY } from "@/lib/atoms/siteKeyAtom";
 import { RenderMedia } from "./RenderMedia";
 import AdminControls from "./AdminControls";
@@ -399,11 +399,7 @@ export default function BackgroundMedia() {
 
       {loading && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-          <BroomDustLoader
-            label={`アップロード中… ${progress ?? 0}%`}
-            size={100}
-            speed={1}
-          />
+          <CardSpinner />
         </div>
       )}
 
