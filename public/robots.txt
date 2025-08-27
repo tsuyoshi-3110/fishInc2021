@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://fishInc2021.com
+
+# Sitemaps
+Sitemap: https://fishInc2021.com/sitemap.xml
