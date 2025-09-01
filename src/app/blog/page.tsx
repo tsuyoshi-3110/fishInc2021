@@ -145,7 +145,7 @@ export default function BlogListPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <h1
           className={clsx(
             "text-xl font-bold",
@@ -154,7 +154,7 @@ export default function BlogListPage() {
         >
           ブログ
         </h1>
-      </div>
+      </div> */}
 
       {posts.length === 0 && !loading ? (
         <p
