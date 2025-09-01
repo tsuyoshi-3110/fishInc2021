@@ -23,7 +23,7 @@ export default function NewsPage() {
   return (
     <main className="px-4 py-12 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mt-6 mb-6 text-center text-white/80">
-        お知らせ・更新情報
+        周辺案内・周辺観光
       </h1>
       <NewsClient />
     </main>

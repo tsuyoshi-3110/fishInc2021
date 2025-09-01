@@ -140,9 +140,11 @@ export default function Header({ className = "" }: { className?: string }) {
                 { href: "/products", label: "客室・設備" },
                 { href: "/stores", label: "施設情報（所在地）" },
                 { href: "/about", label: "FISEBASEについて" },
-                { href: "/news", label: "お知らせ" }, // 使わない場合は削除OK
-                { href: "https://www.airbnb.jp/rooms/1330002248659819586?viralityEntryPoint=1&s=76", label: "ご予約・お問い合わせ" }, // 使わない場合は削除OK
-              
+                { href: "/news", label: "周辺案内・周辺観光" }, // 使わない場合は削除OK
+                {
+                  href: "https://www.airbnb.jp/rooms/1330002248659819586?viralityEntryPoint=1&s=76",
+                  label: "ご予約・お問い合わせ",
+                }, // 使わない場合は削除OK
               ].map(({ href, label }) => (
                 <Link
                   key={href}
