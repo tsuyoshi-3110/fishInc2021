@@ -52,6 +52,7 @@ export default function Header({ className = "" }: { className?: string }) {
   const isDark = currentKey ? darkKeys.includes(currentKey) : false;
 
   const textColor = isDark ? "text-white" : "text-black";
+  const sepColor = isDark ? "bg-white/25" : "bg-black/15"; // ← 区切り線カラー
 
   const menuItems: MenuItem[] = [
     { href: "/", label: "ホーム", en: "Home" },
@@ -71,6 +72,7 @@ export default function Header({ className = "" }: { className?: string }) {
     },
   ];
 
+  // 下部固定ブロック
   const adminItems: MenuItem[] = [
     { href: "/postList", label: "タイムライン", en: "Posts (Draft/Publish)" },
     { href: "/analytics", label: "アクセス分析", en: "Analytics" },
@@ -87,14 +89,14 @@ export default function Header({ className = "" }: { className?: string }) {
     const inner = (
       <div className="leading-tight text-center">
         {/* 日本語 */}
-        <div className={clsx("text-lg font-semibold", textColor)}>
+        <div className={clsx("text-base md:text-lg font-semibold", textColor)}>
           {item.label}
         </div>
-        {/* 英語：サイズUP */}
+        {/* 英語（モバイルは控えめ） */}
         <div
           className={clsx(
-            "mt-1 block leading-snug tracking-wide font-medium",
-            "text-sm md:text-base", // ← 英語のみ大きめに
+            "mt-0.5 block leading-snug tracking-wide font-medium",
+            "text-[11px] md:text-sm",
             isDark ? "text-white/90" : "text-black/80"
           )}
         >
@@ -110,7 +112,7 @@ export default function Header({ className = "" }: { className?: string }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={onClick}
-          className="block px-4 py-2 rounded-md hover:opacity-85 transition"
+          className="block px-3 py-1.5 rounded-md hover:opacity-85 transition"
         >
           {inner}
         </a>
@@ -121,7 +123,7 @@ export default function Header({ className = "" }: { className?: string }) {
       <Link
         href={item.href}
         onClick={onClick}
-        className="block px-4 py-2 rounded-md hover:opacity-85 transition"
+        className="block px-3 py-1.5 rounded-md hover:opacity-85 transition"
       >
         {inner}
       </Link>
@@ -197,24 +199,30 @@ export default function Header({ className = "" }: { className?: string }) {
             </Button>
           </SheetTrigger>
 
+          {/* 縦いっぱい＋上下2段構成 */}
           <SheetContent
             side="right"
             className={clsx(
-              "flex flex-col",
+              "flex h-[100dvh] max-h-[100dvh] flex-col p-0",
               "bg-gray-100",
               gradient && "bg-gradient-to-b",
               gradient
             )}
           >
-            <SheetHeader className="pt-4 px-4">
-              <SheetTitle className={clsx("text-center text-xl", textColor)}>
+            {/* ヘッダー */}
+            <SheetHeader className="px-4 pt-4 pb-2">
+              <SheetTitle
+                className={clsx(
+                  "text-center text-lg md:text-xl leading-tight",
+                  textColor
+                )}
+              >
                 メニュー
               </SheetTitle>
-              {/* タイトル下に英語表記（サイズUP） */}
               <p
                 className={clsx(
-                  "mt-1 text-center tracking-wide font-medium",
-                  "text-base md:text-lg", // ← 少し大きく
+                  "mt-0.5 text-center tracking-wide font-medium",
+                  "text-sm md:text-base",
                   isDark ? "text-white/85" : "text-black/75"
                 )}
                 aria-hidden="true"
@@ -223,33 +231,43 @@ export default function Header({ className = "" }: { className?: string }) {
               </p>
             </SheetHeader>
 
-            {/* メニュー本体（日本語＋英語） */}
-            <div className="flex-1 flex flex-col justify-center items-center space-y-3 text-center">
-              {menuItems.map((item) => (
-                <MenuLink
-                  key={item.href}
-                  item={item}
-                  onClick={() => setOpen(false)}
-                />
-              ))}
+            {/* ▼ タイトル直下の区切り線（常に表示） */}
+            <div className={clsx("h-px mx-4", sepColor)} />
+
+            {/* 上段：通常メニュー（スクロール領域） */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <div className="flex flex-col items-center text-center space-y-2 md:space-y-3 px-2 py-2">
+                {menuItems.map((item) => (
+                  <MenuLink
+                    key={item.href}
+                    item={item}
+                    onClick={() => setOpen(false)}
+                  />
+                ))}
+              </div>
             </div>
 
-            {/* 管理者向け（ログイン時のみ表示） */}
-            <div className="p-4">
-              <div className="flex flex-col items-center text-center space-y-3">
+            {/* 下段：固定ブロック */}
+            <div className="shrink-0 px-2 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-black/0">
+              <div className="flex flex-col items-center text-center space-y-2 md:space-y-3">
                 {isLoggedIn && (
                   <>
-                    {adminItems.slice(0, 2).map((item) => (
-                      <MenuLink
-                        key={item.href}
-                        item={item}
-                        onClick={() => setOpen(false)}
-                      />
-                    ))}
+                    <MenuLink
+                      item={adminItems[0]} // タイムライン
+                      onClick={() => setOpen(false)}
+                    />
+                    <MenuLink
+                      item={adminItems[1]} // アクセス分析
+                      onClick={() => setOpen(false)}
+                    />
                   </>
                 )}
+
                 {/* ログインは常に表示 */}
-                <MenuLink item={adminItems[2]} onClick={() => setOpen(false)} />
+                <MenuLink
+                  item={adminItems[2]} // Admin Login
+                  onClick={() => setOpen(false)}
+                />
               </div>
             </div>
           </SheetContent>
