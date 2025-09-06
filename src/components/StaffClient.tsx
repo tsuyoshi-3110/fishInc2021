@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Image from "next/image";
-import { Plus } from "lucide-react";
+import { Pin, Plus } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import imageCompression from "browser-image-compression";
 import {
@@ -44,13 +44,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import SortableItem from "./SortableItem";
+import { motion, useInView } from "framer-motion";
 
 import { type Product } from "@/types/Product";
-
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
 import { SITE_KEY } from "@/lib/atoms/siteKeyAtom";
 
+/* ====== 設定 ====== */
 type MediaType = "image" | "video";
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const VIDEO_MIME_TYPES = [
@@ -65,7 +64,27 @@ const VIDEO_MIME_TYPES = [
   "video/3gpp",
   "video/3gpp2",
 ];
-const MAX_VIDEO_SEC = 60;
+const MAX_VIDEO_SEC = 30;
+
+/* ✅ 言語リスト（コンポーネント外で安定化） */
+const LANGS = [
+  { key: "en", label: "英語", emoji: "🇺🇸" },
+  { key: "zh", label: "中国語(簡体)", emoji: "🇨🇳" },
+  { key: "zh-TW", label: "中国語(繁体)", emoji: "🇹🇼" },
+  { key: "ko", label: "韓国語", emoji: "🇰🇷" },
+  { key: "fr", label: "フランス語", emoji: "🇫🇷" },
+  { key: "es", label: "スペイン語", emoji: "🇪🇸" },
+  { key: "de", label: "ドイツ語", emoji: "🇩🇪" },
+  { key: "pt", label: "ポルトガル語", emoji: "🇵🇹" },
+  { key: "it", label: "イタリア語", emoji: "🇮🇹" },
+  { key: "ru", label: "ロシア語", emoji: "🇷🇺" },
+  { key: "th", label: "タイ語", emoji: "🇹🇭" },
+  { key: "vi", label: "ベトナム語", emoji: "🇻🇳" },
+  { key: "id", label: "インドネシア語", emoji: "🇮🇩" },
+  { key: "hi", label: "ヒンディー語", emoji: "🇮🇳" },
+  { key: "ar", label: "アラビア語", emoji: "🇸🇦" },
+] as const;
+type LangKey = (typeof LANGS)[number]["key"];
 
 export default function StaffClient() {
   const [list, setList] = useState<Product[]>([]);
@@ -75,21 +94,31 @@ export default function StaffClient() {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  // const [price, setPrice] = useState<number | "">("");
-  // const [taxIncluded, setTaxIncluded] = useState(true); // デフォルト税込
   const [progress, setProgress] = useState<number | null>(null);
   const uploading = progress !== null;
+
   const [loadedIds, setLoadedIds] = useState<Set<string>>(new Set());
   const [aiLoading, setAiLoading] = useState(false);
   const [keywords, setKeywords] = useState(["", "", ""]);
   const [showKeywordInput, setShowKeywordInput] = useState(false);
 
+  /* ▼ 多言語モーダル用 */
+  const [showLangPicker, setShowLangPicker] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [langQuery, setLangQuery] = useState("");
+  const filteredLangs = useMemo(() => {
+    const q = langQuery.trim().toLowerCase();
+    if (!q) return LANGS;
+    return LANGS.filter(
+      (l) =>
+        l.label.toLowerCase().includes(q) || l.key.toLowerCase().includes(q)
+    );
+  }, [langQuery]);
+
   const gradient = useThemeGradient();
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
-    }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 250, tolerance: 5 },
     })
@@ -126,7 +155,7 @@ export default function StaffClient() {
           mediaType: (data.mediaType ?? "image") as MediaType,
           originalFileName: data.originalFileName,
           taxIncluded: data.taxIncluded ?? true,
-          order: data.order ?? 9999, // 🔧 ← 追加
+          order: data.order ?? 9999,
         };
       });
       rows.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
@@ -153,11 +182,6 @@ export default function StaffClient() {
           alert(
             "対応形式：画像（JPEG, PNG, WEBP, GIF）／動画（MP4, MOV など）"
           );
-          return;
-        }
-
-        if (isVideo && file.size > 50 * 1024 * 1024) {
-          alert("動画サイズは50MB未満にしてください");
           return;
         }
 
@@ -188,7 +212,7 @@ export default function StaffClient() {
                 return "mp4";
             }
           }
-          return "jpg";
+          return "jpg"; // 画像はJPEG圧縮で保存
         })();
 
         const uploadFile = isVideo
@@ -205,7 +229,6 @@ export default function StaffClient() {
           getStorage(),
           `products/public/${SITE_KEY}/${id}.${ext}`
         );
-
         const task = uploadBytesResumable(storageRef, uploadFile, {
           contentType: isVideo ? file.type : "image/jpeg",
         });
@@ -240,17 +263,10 @@ export default function StaffClient() {
         originalFileName?: string;
       };
 
-      const payload: ProductPayload = {
-        title,
-        body,
-        mediaURL,
-        mediaType,
-      };
+      const payload: ProductPayload = { title, body, mediaURL, mediaType };
 
       const originalFileName = file?.name || editing?.originalFileName;
-      if (originalFileName) {
-        payload.originalFileName = originalFileName;
-      }
+      if (originalFileName) payload.originalFileName = originalFileName;
 
       if (formMode === "edit" && editing) {
         await updateDoc(doc(colRef, id), payload);
@@ -284,6 +300,7 @@ export default function StaffClient() {
     resetFields();
     setFormMode("add");
   };
+
   const openEdit = (p: Product) => {
     if (uploading) return;
     setEditing(p);
@@ -298,14 +315,13 @@ export default function StaffClient() {
     setTimeout(() => {
       resetFields();
       setFormMode(null);
-    }, 100); // 少しだけ遅延させるとUIフリーズ対策になる
+    }, 100);
   };
 
   const resetFields = () => {
     setEditing(null);
     setTitle("");
     setBody("");
-
     setFile(null);
     setKeywords(["", "", ""]);
   };
@@ -328,7 +344,6 @@ export default function StaffClient() {
 
   const generateBodyWithAI = async () => {
     const validKeywords = keywords.filter((k) => k.trim() !== "");
-
     if (!title || validKeywords.length < 1) {
       alert("名前とキーワードを1つ以上入力してください");
       return;
@@ -339,22 +354,50 @@ export default function StaffClient() {
       const res = await fetch("/api/generate-intro-text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: title,
-          keywords: validKeywords,
-        }),
+        body: JSON.stringify({ name: title, keywords: validKeywords }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "生成に失敗");
 
       setBody(data.text);
-      setKeywords(["", "", ""]); // ←★ 追加（成功時に初期化）
+      setKeywords(["", "", ""]);
     } catch (err) {
       alert("紹介文の生成に失敗しました");
       console.error(err);
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  /* ▼ 翻訳→追記（タイトルは改行で追加、本文は見出しなしでそのまま追記） */
+  const translateAndAppend = async (targetKey: LangKey) => {
+    if (!title.trim() || !body.trim()) return;
+    try {
+      setTranslating(true);
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, body, target: targetKey }),
+      });
+      if (!res.ok) throw new Error("翻訳APIエラー");
+      const data = (await res.json()) as { title?: string; body?: string };
+
+      const tTitle = (data.title ?? "").trim();
+      const tBody = (data.body ?? "").trim();
+
+      // タイトル：改行で追記
+      if (tTitle) setTitle((prev) => (prev ? `${prev}\n${tTitle}` : tTitle));
+
+      // 本文：ヘッダー無しでそのまま追記
+      if (tBody) setBody((prev) => (prev ? `${prev}\n\n${tBody}` : tBody));
+
+      setShowLangPicker(false);
+    } catch (e) {
+      console.error(e);
+      alert("翻訳に失敗しました。時間をおいて再度お試しください。");
+    } finally {
+      setTranslating(false);
     }
   };
 
@@ -383,31 +426,29 @@ export default function StaffClient() {
           items={list.map((p) => p.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
-            {list.map((p) => {
-              return (
-                <SortableItem key={p.id} product={p}>
-                  {({ listeners, attributes, isDragging }) => (
-                    <StaffCard
-                      product={p}
-                      isAdmin={isAdmin}
-                      isDragging={isDragging}
-                      isLoaded={loadedIds.has(p.id)}
-                      isDark={isDark}
-                      gradient={gradient}
-                      listeners={listeners}
-                      attributes={attributes}
-                      onEdit={openEdit}
-                      onRemove={remove}
-                      onMediaLoad={() =>
-                        setLoadedIds((prev) => new Set(prev).add(p.id))
-                      }
-                      uploading={uploading}
-                    />
-                  )}
-                </SortableItem>
-              );
-            })}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-1 lg:grid-cols-1 items-stretch w-full max-w-2xl mx-auto">
+            {list.map((p) => (
+              <SortableItem key={p.id} product={p}>
+                {({ listeners, attributes, isDragging }) => (
+                  <StaffCard
+                    product={p}
+                    isAdmin={isAdmin}
+                    isDragging={isDragging}
+                    isLoaded={loadedIds.has(p.id)}
+                    isDark={isDark}
+                    gradient={gradient}
+                    listeners={listeners}
+                    attributes={attributes}
+                    onEdit={openEdit}
+                    onRemove={remove}
+                    onMediaLoad={() =>
+                      setLoadedIds((prev) => new Set(prev).add(p.id))
+                    }
+                    uploading={uploading}
+                  />
+                )}
+              </SortableItem>
+            ))}
           </div>
         </SortableContext>
       </DndContext>
@@ -432,12 +473,13 @@ export default function StaffClient() {
                 : "スタッフプロフィール追加"}
             </h2>
 
-            <input
-              type="text"
-              placeholder="名前"
+            {/* タイトルは改行可能 */}
+            <textarea
+              placeholder="名前（改行で多言語タイトルを追記できます）"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full border px-3 py-2 rounded"
+              rows={2}
               disabled={uploading}
             />
 
@@ -449,6 +491,7 @@ export default function StaffClient() {
               rows={4}
               disabled={uploading}
             />
+
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => setShowKeywordInput(!showKeywordInput)}
@@ -490,18 +533,118 @@ export default function StaffClient() {
                     className="w-full py-2 bg-blue-600 text-white rounded disabled:opacity-50 flex items-center justify-center gap-2"
                     disabled={aiLoading}
                   >
-                    {aiLoading ? (
-                      <>
-                        <span>生成中...</span>
-                      </>
-                    ) : (
-                      "紹介文を生成する"
-                    )}
+                    {aiLoading ? <>生成中...</> : "紹介文を生成する"}
                   </button>
                 </div>
               )}
             </div>
-            <label>画像 / 動画 (30秒以内)</label>
+
+            {/* ▼ AIで多国語対応 */}
+            {title.trim() && body.trim() && (
+              <button
+                type="button"
+                onClick={() => setShowLangPicker(true)}
+                className="w-full mt-2 px-4 py-2 bg-indigo-600 text-white rounded disabled:opacity-50"
+                disabled={uploading || translating}
+              >
+                AIで多国語対応
+              </button>
+            )}
+
+            {/* ▼ 言語ピッカー（ガラス風＋検索＋グリッド） */}
+            {showLangPicker && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/40"
+                onClick={() => !translating && setShowLangPicker(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 8 }}
+                  transition={{ duration: 0.18 }}
+                  className="w-full max-w-lg mx-4 rounded-2xl shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="rounded-2xl bg-white/90 backdrop-saturate-150 border border-white/50">
+                    <div className="p-5 border-b border-black/5 flex items-center justify-between">
+                      <h3 className="text-lg font-bold">言語を選択</h3>
+                      <button
+                        type="button"
+                        onClick={() => setShowLangPicker(false)}
+                        className="text-sm text-gray-500 hover:text-gray-800"
+                        disabled={translating}
+                      >
+                        閉じる
+                      </button>
+                    </div>
+
+                    <div className="px-5 pt-4">
+                      <input
+                        type="text"
+                        value={langQuery}
+                        onChange={(e) => setLangQuery(e.target.value)}
+                        placeholder="言語名やコードで検索（例: フランス語 / fr）"
+                        className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+
+                    <div className="p-5 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {filteredLangs.map((lng) => (
+                        <button
+                          key={lng.key}
+                          type="button"
+                          onClick={() => translateAndAppend(lng.key)}
+                          disabled={translating}
+                          className={clsx(
+                            "group relative rounded-xl border p-3 text-left transition",
+                            "bg-white hover:shadow-lg hover:-translate-y-0.5",
+                            "focus:outline-none focus:ring-2 focus:ring-indigo-500",
+                            "disabled:opacity-60"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">{lng.emoji}</span>
+                            <div className="min-w-0">
+                              <div className="font-semibold truncate">
+                                {lng.label}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                /{lng.key}
+                              </div>
+                            </div>
+                          </div>
+                          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-indigo-400 opacity-0 group-hover:opacity-100 transition" />
+                        </button>
+                      ))}
+                      {filteredLangs.length === 0 && (
+                        <div className="col-span-full text-center text-sm text-gray-500 py-6">
+                          一致する言語が見つかりません
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="px-5 pb-5">
+                      <button
+                        type="button"
+                        onClick={() => setShowLangPicker(false)}
+                        className="w-full rounded-lg px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700"
+                        disabled={translating}
+                      >
+                        キャンセル
+                      </button>
+                    </div>
+
+                    {translating && (
+                      <div className="h-1 w-full overflow-hidden rounded-b-2xl">
+                        <div className="h-full w-1/2 animate-[progress_1.2s_ease-in-out_infinite] bg-indigo-500" />
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+            <label>画像 / 動画 ({MAX_VIDEO_SEC}秒以内)</label>
             <input
               type="file"
               accept={[...IMAGE_MIME_TYPES, ...VIDEO_MIME_TYPES].join(",")}
@@ -524,7 +667,7 @@ export default function StaffClient() {
                   URL.revokeObjectURL(blobURL);
                   if (vid.duration > MAX_VIDEO_SEC) {
                     alert(`動画は ${MAX_VIDEO_SEC} 秒以内にしてください`);
-                    e.target.value = ""; // リセット
+                    (e.target as HTMLInputElement).value = ""; // リセット
                     return;
                   }
                   setFile(f);
@@ -562,6 +705,7 @@ export default function StaffClient() {
   );
 }
 
+/* ====== カード ====== */
 interface StoreCardProps {
   product: Product;
   isAdmin: boolean;
@@ -605,7 +749,7 @@ export function StaffCard({
       }
       style={isDragging ? { transform: undefined } : undefined}
       className={clsx(
-        "flex flex-col h-full border rounded-lg overflow-hidden shadow relative transition-colors duration-200",
+        "flex flex-col h-full border rounded-lg shadow relative transition-colors duration-200 overflow-visible mt-6",
         "bg-gradient-to-b",
         gradient,
         isDragging
@@ -622,10 +766,10 @@ export function StaffCard({
           {...attributes}
           {...listeners}
           onTouchStart={(e) => e.preventDefault()}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab active:cursor-grabbing touch-none select-none"
+          className="absolute -top-5 left-1/2 -translate-x-1/2 z-30 cursor-grab active:cursor-grabbing touch-none select-none"
         >
-          <div className="w-10 h-10 bg-gray-200 text-gray-700 rounded-full text-sm flex items-center justify-center shadow">
-            ≡
+          <div className="w-10 h-10 rounded-full bg-white/90 text-gray-800 flex items-center justify-center shadow-md ring-1 ring-black/10 backdrop-blur">
+            <Pin className="w-5 h-5" />
           </div>
         </div>
       )}
@@ -685,7 +829,7 @@ export function StaffCard({
             className="object-cover"
             sizes="(min-width:1024px) 320px, (min-width:640px) 45vw, 90vw"
             onLoad={onMediaLoad}
-            unoptimized 
+            unoptimized
           />
         </div>
       ) : (
@@ -704,7 +848,13 @@ export function StaffCard({
       )}
 
       <div className="p-3 space-y-2">
-        <h2 className={clsx("text-sm font-bold", isDark && "text-white")}>
+        {/* タイトルは多言語改行に対応 */}
+        <h2
+          className={clsx(
+            "text-sm font-bold whitespace-pre-wrap",
+            isDark && "text-white"
+          )}
+        >
           {p.title}
         </h2>
         <p
@@ -719,3 +869,6 @@ export function StaffCard({
     </motion.div>
   );
 }
+
+/* 任意：グローバルCSSに追加（翻訳中プログレスのアニメ） */
+/* @keyframes progress { 0%{transform:translateX(-100%)} 50%{transform:translateX(0%)} 100%{transform:translateX(100%)} } */

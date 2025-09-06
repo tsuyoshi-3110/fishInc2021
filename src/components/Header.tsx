@@ -20,13 +20,6 @@ import { THEMES, ThemeKey } from "@/lib/themes";
 
 const HEADER_H = "3rem";
 
-type MenuItem = {
-  href: string;
-  label: string; // 日本語
-  en: string; // 英語
-  external?: boolean;
-};
-
 export default function Header({ className = "" }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const gradient = useThemeGradient();
@@ -51,85 +44,6 @@ export default function Header({ className = "" }: { className?: string }) {
   )?.[0] ?? null) as ThemeKey | null;
   const isDark = currentKey ? darkKeys.includes(currentKey) : false;
 
-  const textColor = isDark ? "text-white" : "text-black";
-  const sepColor = isDark ? "bg-white/25" : "bg-black/15"; // ← 区切り線カラー
-
-  const menuItems: MenuItem[] = [
-    { href: "/", label: "ホーム", en: "Home" },
-    { href: "/products", label: "客室・設備", en: "Rooms & Amenities" },
-    {
-      href: "/stores",
-      label: "施設情報（所在地）",
-      en: "Location & Facility Info",
-    },
-    { href: "/blog", label: "FISEBASEについて", en: "About FISEBASE" },
-    { href: "/news", label: "周辺案内・周辺観光", en: "Nearby & Sightseeing" },
-    {
-      href: "https://www.airbnb.jp/rooms/1330002248659819586?viralityEntryPoint=1&s=76",
-      label: "ご予約・お問い合わせ",
-      en: "Book / Contact",
-      external: true,
-    },
-  ];
-
-  // 下部固定ブロック
-  const adminItems: MenuItem[] = [
-    { href: "/postList", label: "タイムライン", en: "Posts (Draft/Publish)" },
-    { href: "/analytics", label: "アクセス分析", en: "Analytics" },
-    { href: "/login", label: "Administrator Login", en: "Admin Login" },
-  ];
-
-  function MenuLink({
-    item,
-    onClick,
-  }: {
-    item: MenuItem;
-    onClick?: () => void;
-  }) {
-    const inner = (
-      <div className="leading-tight text-center">
-        {/* 日本語 */}
-        <div className={clsx("text-base md:text-lg font-semibold", textColor)}>
-          {item.label}
-        </div>
-        {/* 英語（モバイルは控えめ） */}
-        <div
-          className={clsx(
-            "mt-0.5 block leading-snug tracking-wide font-medium",
-            "text-[11px] md:text-sm",
-            isDark ? "text-white/90" : "text-black/80"
-          )}
-        >
-          {item.en}
-        </div>
-      </div>
-    );
-
-    if (item.external) {
-      return (
-        <a
-          href={item.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={onClick}
-          className="block px-3 py-1.5 rounded-md hover:opacity-85 transition"
-        >
-          {inner}
-        </a>
-      );
-    }
-
-    return (
-      <Link
-        href={item.href}
-        onClick={onClick}
-        className="block px-3 py-1.5 rounded-md hover:opacity-85 transition"
-      >
-        {inner}
-      </Link>
-    );
-  }
-
   return (
     <header
       className={clsx(
@@ -145,7 +59,7 @@ export default function Header({ className = "" }: { className?: string }) {
         href="/"
         className={clsx(
           "text-md font-bold flex items-center gap-2 py-2 hover:opacity-80",
-          textColor
+          isDark ? "text-white" : "text-black"
         )}
         aria-label="FISEBASE ホーム"
       >
@@ -162,7 +76,7 @@ export default function Header({ className = "" }: { className?: string }) {
         FISEBASE
       </Link>
 
-      {/* 右側：クイックリンク（Airbnb） */}
+      {/* 右側：クイックリンク（お問い合わせ／アクセス） */}
       <nav className="hidden sm:flex items-center gap-3 ml-auto mr-2">
         <a
           href="https://www.airbnb.jp/rooms/1330002248659819586?viralityEntryPoint=1&s=76"
@@ -199,76 +113,88 @@ export default function Header({ className = "" }: { className?: string }) {
             </Button>
           </SheetTrigger>
 
-          {/* 縦いっぱい＋上下2段構成 */}
           <SheetContent
             side="right"
             className={clsx(
-              "flex h-[100dvh] max-h-[100dvh] flex-col p-0",
+              "flex flex-col",
               "bg-gray-100",
               gradient && "bg-gradient-to-b",
               gradient
             )}
           >
-            {/* ヘッダー */}
-            <SheetHeader className="px-4 pt-4 pb-2">
+            <SheetHeader className="pt-4 px-4">
               <SheetTitle
                 className={clsx(
-                  "text-center text-lg md:text-xl leading-tight",
-                  textColor
+                  "text-center text-xl",
+                  isDark ? "text-white" : "text-black"
                 )}
               >
                 メニュー
               </SheetTitle>
-              <p
-                className={clsx(
-                  "mt-0.5 text-center tracking-wide font-medium",
-                  "text-sm md:text-base",
-                  isDark ? "text-white/85" : "text-black/75"
-                )}
-                aria-hidden="true"
-              >
-                Menu
-              </p>
             </SheetHeader>
 
-            {/* ▼ タイトル直下の区切り線（常に表示） */}
-            <div className={clsx("h-px mx-4", sepColor)} />
+            {/* 民泊サイト向けメニュー構成 */}
+            <div className="flex-1 flex flex-col justify-center items-center space-y-4 text-center">
+              {[
+                { href: "/", label: "ホーム" },
+                { href: "/products", label: "客室・設備" },
+                { href: "/stores", label: "施設情報（所在地）" },
+                { href: "/blog", label: "FISEBASEについて" },
+                { href: "/news", label: "周辺案内・周辺観光" }, // 使わない場合は削除OK
+                { href: "https://www.airbnb.jp/rooms/1330002248659819586?viralityEntryPoint=1&s=76", label: "ご予約・お問い合わせ" }, // 使わない場合は削除OK
 
-            {/* 上段：通常メニュー（スクロール領域） */}
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              <div className="flex flex-col items-center text-center space-y-2 md:space-y-3 px-2 py-2">
-                {menuItems.map((item) => (
-                  <MenuLink
-                    key={item.href}
-                    item={item}
-                    onClick={() => setOpen(false)}
-                  />
-                ))}
-              </div>
+              ].map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setOpen(false)}
+                  className={clsx(
+                    "text-lg hover:opacity-80",
+                    isDark ? "text-white" : "text-black"
+                  )}
+                >
+                  {label}
+                </Link>
+              ))}
             </div>
 
-            {/* 下段：固定ブロック */}
-            <div className="shrink-0 px-2 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-black/0">
-              <div className="flex flex-col items-center text-center space-y-2 md:space-y-3">
-                {isLoggedIn && (
-                  <>
-                    <MenuLink
-                      item={adminItems[0]} // タイムライン
-                      onClick={() => setOpen(false)}
-                    />
-                    <MenuLink
-                      item={adminItems[1]} // アクセス分析
-                      onClick={() => setOpen(false)}
-                    />
-                  </>
-                )}
+            {/* 管理者向け（ログイン時のみ表示） */}
+            <div className="p-4 space-y-4">
+              {isLoggedIn && (
+                <>
+                  <Link
+                    href="/postList"
+                    onClick={() => setOpen(false)}
+                    className={clsx(
+                      "block text-center text-lg hover:opacity-80",
+                      isDark ? "text-white" : "text-black"
+                    )}
+                  >
+                    投稿管理（下書き/公開）
+                  </Link>
+                  <Link
+                    href="/analytics"
+                    onClick={() => setOpen(false)}
+                    className={clsx(
+                      "block text-center text-lg hover:opacity-80",
+                      isDark ? "text-white" : "text-black"
+                    )}
+                  >
+                    アクセス分析
+                  </Link>
+                </>
+              )}
 
-                {/* ログインは常に表示 */}
-                <MenuLink
-                  item={adminItems[2]} // Admin Login
-                  onClick={() => setOpen(false)}
-                />
-              </div>
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className={clsx(
+                  "block text-center text-lg hover:opacity-80",
+                  isDark ? "text-white" : "text-black"
+                )}
+              >
+                Administrator Login
+              </Link>
             </div>
           </SheetContent>
         </Sheet>
