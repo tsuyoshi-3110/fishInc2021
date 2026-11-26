@@ -191,7 +191,7 @@ AI アシスタントです。オーナーが出来る操作は次の 4 つだ�
 `;
 
     const chat = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-5.4",
       messages: [{ role: "user", content: prompt }],
     });
 

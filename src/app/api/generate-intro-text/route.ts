@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   const prompt = `以下のキーワードを含めて、自己紹介を作成してください。自然で親しみやすい文章にしてください。文章は短く、最大でも200文字程度にしてください。\nキーワード: ${keywords.join(", ")}`;
 
   const chat = await openai.chat.completions.create({
-    model: "gpt-4",
+    model: "gpt-5.4",
     messages: [{ role: "user", content: prompt }],
   });
 

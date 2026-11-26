@@ -35,7 +35,7 @@ ${recentReplies.length > 0 ? recentReplies.join("\n") : "（返信はまだあ�
 `;
 
     const chat = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-5.4",
       messages: [{ role: "user", content: prompt }],
     });
 
